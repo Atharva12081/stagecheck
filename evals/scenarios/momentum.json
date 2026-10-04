@@ -1,0 +1,9 @@
+{
+  "name": "momentum-check",
+  "title": "Momentum check",
+  "markets": [],
+  "items": [
+    { "kind": "artist", "name": "Rising Star", "context": "Is this act gaining or losing momentum?" }
+  ],
+  "expect": { "ops": ["trends"] }
+}

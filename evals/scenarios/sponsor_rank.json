@@ -1,0 +1,10 @@
+{
+  "name": "indie-tour-sponsor-check",
+  "title": "Indie tour sponsor check",
+  "markets": ["Austin", "Nashville"],
+  "items": [
+    { "kind": "brand", "name": "Lone Star Beer", "context": "Which of these sponsors best aligns with an indie folk tour?", "alternatives": ["Topo Chico", "Yeti"] },
+    { "kind": "artist", "name": "Opener Act", "context": "Which opener best fits the headliner?", "alternatives": ["Folk Trio", "EDM DJ"] }
+  ],
+  "expect": { "ops": ["rank", "rank"] }
+}

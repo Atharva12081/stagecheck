@@ -1,0 +1,9 @@
+{
+  "name": "geo-market-fit",
+  "title": "Tour market fit",
+  "markets": ["Austin", "Nashville", "Portland"],
+  "items": [
+    { "kind": "artist", "name": "Headliner", "context": "Where is this artist disproportionately strong?", "market": "Austin" }
+  ],
+  "expect": { "ops": ["where_popular"] }
+}

@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-qloo: #00ff66; /* Adjust to match brand or a "preflight" vibe */
+  --color-preflight-bg: #0a0a0a;
+  --color-preflight-panel: #111111;
+  --color-preflight-border: #222222;
+  --color-preflight-text: #ededed;
+  --color-preflight-muted: #888888;
+}
+
+body {
+  background-color: var(--color-preflight-bg);
+  color: var(--color-preflight-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}

@@ -1,0 +1,13 @@
+{
+  "name": "stagecheck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "test": "npm --workspace stagecheck-backend test",
+    "eval": "npm --workspace stagecheck-backend run eval"
+  }
+}

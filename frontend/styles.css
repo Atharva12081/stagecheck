@@ -1,0 +1,12 @@
+body { font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 1.5rem; line-height: 1.45; }
+header { border-bottom: 2px solid #111; margin-bottom: 1.5rem; padding-bottom: 1rem; }
+label { display: block; margin: 0.6rem 0; }
+input, textarea { width: 100%; font: inherit; padding: 0.4rem; }
+button { font: inherit; padding: 0.5rem 1.2rem; cursor: pointer; }
+.badge { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700; }
+.badge.live { background: #d7f5d7; } .badge.sample { background: #fff3bf; } .badge.unknown { background: #eee; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 0.8rem 1rem; margin: 0.6rem 0; }
+.verdict { font-weight: 800; }
+.PASS { color: #0a7a0a; } .FAIL { color: #b00020; } .REVIEW { color: #8a6d00; } .ABSTAIN { color: #555; }
+.dim { color: #666; } pre { background: #f6f6f6; padding: 0.6rem; overflow-x: auto; }
+small.ev { color: #444; }

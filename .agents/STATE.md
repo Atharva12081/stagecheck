@@ -13,6 +13,7 @@ Verified working (2026-10-04):
 2026-10-05 corrections (Agent A):
 - Official OpenAPI recheck fixed 4 wrong assumptions before live key arrives: `/search` types now URN; describe uses `GET /entities?entity_ids=`; tags use `filter.query`; trends rewritten to `GET /v2/trending` (+filter.type/start/end/signal, percentile 0-100 normalized). New `test/qloo-contract.test.ts` locks paths (34/34 pass, evals still clean).
 - Evidence integrity: removed hardcoded XG/aespa/Weeknd sample affinities from `client.ts` (fabricated cultural claims); sample fixtures are generic labeled echoes. Filed BLOCKERS #2 (SAMPLE badge) + #3 for Agent B.
+- 2026-10-05 finalization sprint: frontend SAMPLE DATA banner + header pill; backend serves `frontend/dist` with SPA fallback + traversal guard; Dockerfile builds both stages (no SAMPLE_MODE in prod); report mode now live|sample|unconfigured; local git committed (secret scan clean).
 
 Next (Agent A):
 1. Live QLOO_API_KEY → smoke + flagship contradiction hunt (BLOCKERS #1).

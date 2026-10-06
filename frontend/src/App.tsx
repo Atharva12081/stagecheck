@@ -8,11 +8,11 @@ import type { Plan, VerifiedReport } from './types';
 type Step = 'INPUT' | 'RUNNING' | 'RESULTS' | 'DIFF';
 
 const DEFAULT_PLAN: Plan = {
-  title: 'Summer indie tour',
-  markets: ['Austin', 'Nashville', 'Portland'],
+  title: 'Eras stadium tour sponsorship',
+  markets: ['Austin', 'Nashville', 'Chicago'],
   items: [
-    { kind: 'brand', name: 'Lone Star Beer', context: 'Which of these sponsors best aligns with an indie folk tour?', alternatives: ['Topo Chico', 'Yeti'] },
-    { kind: 'artist', name: 'Phoebe Bridgers', context: 'Market strength for this headliner', market: 'Austin' },
+    { kind: 'artist', name: 'Taylor Swift', context: 'Where is this headliner disproportionately strong?', market: 'Austin' },
+    { kind: 'brand', name: 'Liquid Death', context: 'Which of these sponsors best aligns with a Taylor Swift stadium tour?', alternatives: ['Nike', 'Coca-Cola'] },
   ],
 };
 

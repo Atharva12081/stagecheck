@@ -10,6 +10,11 @@ Verified working (2026-10-04):
 - `evals/run.ts`: 4 scenarios, tool_selection 6/6, repair_reverify 3/3, claim_violations 0, avg 5.8 calls/verify.
 - Live server boot: /api/health, /api/verify, /mcp (list+call), validation 400s, static frontend 200.
 
+2026-10-06 LIVE (key secured server-side only, never in repo/logs):
+- Contract re-verified live: affinity is signal-scoped (`entity.query.affinity`); `filter.entities` deprecated → `filter.results.entities` + signal (no warnings); heatmap geo confirmed; trending empty for tested entities (momentum deprioritized).
+- Hunted 12 rank + 3 geo scenarios (~70 calls). FLAGSHIP: Taylor Swift stadium tour sponsor — Liquid Death FAILS (gap 0.25: Nike 0.88 > Coca-Cola 0.84 > Liquid Death 0.64), repaired to Nike, reverified PASS. Reproduced byte-identical twice (10 calls each).
+- Engine: sibling-signal joint ranking, heatmap rank-order + tie guard, exact-match resolution, reproduce-top repair, rank-only repair. 38/38 tests, evals clean.
+
 2026-10-05 corrections (Agent A):
 - Official OpenAPI recheck fixed 4 wrong assumptions before live key arrives: `/search` types now URN; describe uses `GET /entities?entity_ids=`; tags use `filter.query`; trends rewritten to `GET /v2/trending` (+filter.type/start/end/signal, percentile 0-100 normalized). New `test/qloo-contract.test.ts` locks paths (34/34 pass, evals still clean).
 - Evidence integrity: removed hardcoded XG/aespa/Weeknd sample affinities from `client.ts` (fabricated cultural claims); sample fixtures are generic labeled echoes. Filed BLOCKERS #2 (SAMPLE badge) + #3 for Agent B.

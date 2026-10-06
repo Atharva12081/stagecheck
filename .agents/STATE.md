@@ -13,6 +13,7 @@ Verified working (2026-10-04):
 2026-10-06 LIVE (key secured server-side only, never in repo/logs):
 - Contract re-verified live: affinity is signal-scoped (`entity.query.affinity`); `filter.entities` deprecated → `filter.results.entities` + signal (no warnings); heatmap geo confirmed; trending empty for tested entities (momentum deprioritized).
 - Hunted 12 rank + 3 geo scenarios (~70 calls). FLAGSHIP: Taylor Swift stadium tour sponsor — Liquid Death FAILS (gap 0.25: Nike 0.88 > Coca-Cola 0.84 > Liquid Death 0.64), repaired to Nike, reverified PASS. Reproduced byte-identical twice (10 calls each).
+- Hostile review (2026-10-06): Implementation 9.5, Design 9, Impact 8.5, Idea 9.5, Indispensability 10, Agentic 9, Originality 9.5, Integrity 10, Reliability 9, Demo clarity 9.5, Memorability 9. Only sub-9 is Impact breadth — accepted, no destabilizing change. DEFAULT_PLAN is now the flagship.
 - Engine: sibling-signal joint ranking, heatmap rank-order + tie guard, exact-match resolution, reproduce-top repair, rank-only repair. 38/38 tests, evals clean.
 
 2026-10-05 corrections (Agent A):

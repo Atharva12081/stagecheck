@@ -1,4 +1,4 @@
-import { MAX_CALLS_PER_VERIFY, QLOO_KEY, SAMPLE_MODE } from "../config.js";
+import { MAX_CALLS_PER_VERIFY, MIN_GEO_SPREAD, QLOO_KEY, SAMPLE_MODE } from "../config.js";
 import { getCallCount } from "../qloo/client.js";
 import { opCompare, opDescribe, opRank, opRecommend, opResolve, opTags, opTrends, opWherePopular, opAudiences } from "../qloo/operations.js";
 import { decompose, type PlanItem } from "./planner.js";
@@ -18,7 +18,7 @@ function push(d: DecisionContract, e: EvidenceEntry): void {
   d.evidence.push(e);
 }
 
-async function evaluate(d: DecisionContract, markets: string[]): Promise<void> {
+async function evaluate(d: DecisionContract, markets: string[], siblings: Map<string, string>): Promise<void> {
   push(d, entry("user_input", "plan", d.id, `Plan choice "${d.original}" (${d.kind})${d.market ? ` in ${d.market}` : ""}.`, { choice: d.original }));
 
   if (d.questionClass === "unsupported") {
@@ -29,38 +29,44 @@ async function evaluate(d: DecisionContract, markets: string[]): Promise<void> {
     return;
   }
 
-  const r = await opResolve(d.original, d.kind);
-  push(d, entry("qloo_output", "resolve", d.id, `Resolution state=${r.result.state}, hits=${r.resolved.length}.`, r.result.data));
-  if (r.result.state === "error" || r.result.state === "needs_input") {
-    d.verdict = "ABSTAIN";
-    d.verdictReason = `Resolution failed (${r.result.note}).`;
-    d.evidenceQuality = "insufficient";
-    return;
-  }
-  d.entities = r.resolved;
-  const anchor = r.resolved[0];
+  // Anchors are resolved in verifyPlan's pre-pass (d.entities). An empty list
+  // means unknown entity or kind/type mismatch — both abstain.
+  const anchor = d.entities[0];
   if (!anchor) {
     d.verdict = "ABSTAIN";
-    d.verdictReason = "Entity not found in Qloo; unknown entities are abstained, never invented.";
+    d.verdictReason = "Entity not found in Qloo, or no kind-matching entity found; unknown entities are abstained, never invented.";
     d.evidenceQuality = "insufficient";
     push(d, entry("calculation", "verdict", d.id, d.verdictReason, null));
     return;
   }
-  const ambiguous = r.resolved.length > 1 || anchor.ambiguous;
+  const ambiguous = anchor.ambiguous;
 
   switch (d.op) {
     case "rank": {
+      // Shared signal = the rest of the plan (sibling anchors). Affinity is
+      // signal-scoped, so candidates are scored by fit with plan context.
+      const signalIds = [...siblings.values()].filter((id) => id !== anchor.id).slice(0, 3);
+      if (signalIds.length === 0) {
+        d.verdict = "ABSTAIN";
+        d.verdictReason = "No other plan decisions resolved to anchor a joint ranking; abstaining rather than scoring without a shared scale.";
+        d.evidenceQuality = "insufficient";
+        push(d, entry("calculation", "verdict", d.id, d.verdictReason, null));
+        break;
+      }
       const candIds = new Map<string, string>();
       candIds.set(anchor.id, anchor.name);
       for (const c of d.candidates.slice(0, 4)) {
         const rr = await opResolve(c, d.kind);
         push(d, entry("qloo_output", "resolve", d.id, `Candidate "${c}" state=${rr.result.state}.`, rr.result.data));
-        if (rr.resolved[0]) candIds.set(rr.resolved[0].id, rr.resolved[0].name);
+        if (rr.resolved[0] && rr.typeMatched) candIds.set(rr.resolved[0].id, rr.resolved[0].name);
       }
-      const ranked = await opRank(d.kind, [...candIds.keys()], d.market ? { "signal.location.query": d.market } : {});
+      const ranked = await opRank(
+        d.kind,
+        [...candIds.keys()],
+        signalIds,
+        d.market ? { "filter.location.query": d.market, "filter.location.radius": "0" } : undefined,
+      );
       push(d, entry("qloo_output", "rank", d.id, `Joint ranking state=${ranked.result.state}, n=${ranked.candidates.length}.`, ranked.result.data));
-      const nameById = new Map(ranked.candidates.map((c) => [c.id, c.name]));
-      void nameById;
       const out = decide({
         state: ranked.result.state,
         ranked: ranked.candidates.map((c) => ({ name: c.name, affinity: c.affinity })),
@@ -78,24 +84,25 @@ async function evaluate(d: DecisionContract, markets: string[]): Promise<void> {
     case "where_popular": {
       const ms = markets.length > 0 ? markets : d.market ? [d.market] : [];
       if (ms.length < 2) {
-        const single = await opRank(d.kind, [anchor.id], d.market ? { "signal.location.query": d.market } : {});
-        push(d, entry("qloo_output", "rank", d.id, `Single-market affinity state=${single.result.state}.`, single.result.data));
-        const aff = single.candidates[0]?.affinity ?? 0;
-        const out = decide({ state: single.result.state, ranked: [{ name: anchor.name, affinity: aff }], chosenName: anchor.name, ambiguous, methodValid: true });
-        d.verdict = out.verdict === "PASS" && aff < 0.2 ? "REVIEW" : out.verdict;
-        d.verdictReason = `Market affinity ${aff.toFixed(2)}. ${out.reason}`;
-        d.evidenceQuality = out.quality;
-        d.derived = { affinity: aff };
+        d.verdict = "ABSTAIN";
+        d.verdictReason = "Geographic verdicts need at least two markets to order; single-market affinity has no comparison basis.";
+        d.evidenceQuality = "insufficient";
+        push(d, entry("calculation", "verdict", d.id, d.verdictReason, null));
         break;
       }
       const geo = await opWherePopular(d.kind, anchor.id, ms);
       push(d, entry("qloo_output", "where_popular", d.id, `Markets: ${geo.byMarket.map((m) => `${m.market}=${m.affinity.toFixed(2)}`).join(", ")}.`, geo.byMarket));
       const order = [...geo.byMarket].sort((a, b) => b.affinity - a.affinity);
       const chosenRank = order.findIndex((m) => m.market === d.market);
+      const spread = order.length > 0 ? Math.round(((order[0]!.affinity - order[order.length - 1]!.affinity)) * 1e4) / 1e4 : 0;
       if (geo.result.state === "error" || geo.result.state === "empty") {
         d.verdict = "ABSTAIN";
         d.verdictReason = `Geographic evidence unavailable (${geo.result.note}).`;
         d.evidenceQuality = "insufficient";
+      } else if (spread < MIN_GEO_SPREAD) {
+        d.verdict = "REVIEW";
+        d.verdictReason = `Markets effectively tied (spread ${spread.toFixed(3)} < ${MIN_GEO_SPREAD}); no meaningful geographic signal.`;
+        d.evidenceQuality = "thin";
       } else if (chosenRank <= 0) {
         d.verdict = "PASS";
         d.verdictReason = `${d.market} ranks #1 of ${order.length} markets by affinity order.`;
@@ -140,7 +147,7 @@ async function evaluate(d: DecisionContract, markets: string[]): Promise<void> {
       const otherIds: string[] = [];
       for (const c of others) {
         const rr = await opResolve(c, d.kind);
-        if (rr.resolved[0]) otherIds.push(rr.resolved[0].id);
+        if (rr.resolved[0] && rr.typeMatched) otherIds.push(rr.resolved[0].id);
       }
       if (otherIds.length === 0) {
         d.verdict = "ABSTAIN";
@@ -189,15 +196,26 @@ export async function verifyPlan(plan: PlanInput): Promise<VerifiedReport> {
   const t0 = Date.now();
   const markets = (plan.markets ?? []).slice(0, 6);
   const decisions = decompose(plan.items, markets);
+  // Pre-pass: resolve every decision's anchor once, so rank evaluations can
+  // score candidates against the rest of the plan (shared signal, one call).
+  const anchors = new Map<string, string>();
   for (const d of decisions) {
-    if (getCallCount() >= MAX_CALLS_PER_VERIFY) {
-      d.verdict = "ABSTAIN";
+    if (d.questionClass === "unsupported") continue;
+    if (getCallCount() >= MAX_CALLS_PER_VERIFY) break;
+    const r = await opResolve(d.original, d.kind);
+    push(d, entry("qloo_output", "resolve", d.id, `Resolution state=${r.result.state}, hits=${r.resolved.length}.`, r.result.data));
+    if (r.result.state !== "error" && r.result.state !== "needs_input" && r.resolved[0]) {
+      d.entities = r.resolved;
+      anchors.set(d.id, r.resolved[0].id);
+    }
+  }
+  for (const d of decisions) {
+    if (getCallCount() >= MAX_CALLS_PER_VERIFY && d.verdict === "ABSTAIN" && d.evidence.length === 0) {
       d.verdictReason = "Quota guard: Qloo call budget exhausted; abstaining safely.";
-      d.evidenceQuality = "insufficient";
       continue;
     }
-    await evaluate(d, markets);
-    if (d.verdict === "FAIL" && getCallCount() < MAX_CALLS_PER_VERIFY) await repairAndReverify(d);
+    await evaluate(d, markets, anchors);
+    if (d.verdict === "FAIL" && getCallCount() < MAX_CALLS_PER_VERIFY) await repairAndReverify(d, anchors);
   }
   const revisedPlan = decisions.map((d) => ({
     kind: d.kind,

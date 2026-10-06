@@ -8,6 +8,7 @@ export const PASS_GAP = 0.05; // rank_gap <= this with solid evidence -> PASS
 export const FAIL_GAP = 0.15; // rank_gap >= this -> FAIL (chosen far behind best)
 export const MIN_EVIDENCE = 2; // min ranked candidates needed for PASS/FAIL, else REVIEW/ABSTAIN
 export const AFFINITY_FLOOR = 0.05; // affinities below this are noise -> abstain-leaning
+export const MIN_GEO_SPREAD = 0.05; // heatmap market spreads below this are ties -> REVIEW, never FAIL
 
 // Reliability bounds.
 export const QLOO_TIMEOUT_MS = 12_000;

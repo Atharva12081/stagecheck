@@ -63,13 +63,72 @@ describe("qloo api contract (verified against official OpenAPI 2026-10-05)", () 
     expect(seen[0]).toContain("filter.query=folk");
   });
 
-  it("rank issues a single joint insights call", async () => {
+  it("rank issues a single joint insights call with shared signal + filter.entities", async () => {
     const { resetQuota } = await import("../src/qloo/client.js");
     const { opRank } = await import("../src/qloo/operations.js");
     resetQuota();
     stub(() => ({ success: true, results: { entities: [] } }));
-    await opRank("brand", ["a", "b"], {});
+    await opRank("brand", ["a", "b"], ["sig1"], { "filter.location.query": "Austin" });
     expect(seen.filter((u) => u.includes("/v2/insights"))).toHaveLength(1);
     expect(seen[0]).toContain("filter.results.entities=a%2Cb");
+    expect(seen[0]).toContain("signal.interests.entities=sig1");
+    expect(seen[0]).toContain("filter.location.query=Austin");
+    expect(seen[0]).not.toContain("filter.entities=");
+  });
+
+  it("rank refuses to call without a shared signal", async () => {
+    const { resetQuota } = await import("../src/qloo/client.js");
+    const { opRank } = await import("../src/qloo/operations.js");
+    resetQuota();
+    stub(() => ({ success: true, results: { entities: [] } }));
+    const r = await opRank("brand", ["a", "b"], []);
+    expect(seen).toHaveLength(0);
+    expect(r.result.state).toBe("needs_input");
+  });
+
+  it("resolve rejects kind/type mismatches", async () => {
+    const { resetQuota } = await import("../src/qloo/client.js");
+    const { opResolve } = await import("../src/qloo/operations.js");
+    resetQuota();
+    stub(() => ({ results: [{ entity_id: "p1", name: "Some Place", types: ["urn:entity:place"] }] }));
+    const r = await opResolve("Some Place", "artist");
+    expect(r.typeMatched).toBe(false);
+    expect(r.resolved).toHaveLength(0);
+  });
+
+  it("resolve: exact top hit is not ambiguous; same-named rival is", async () => {
+    const { resetQuota } = await import("../src/qloo/client.js");
+    const { opResolve } = await import("../src/qloo/operations.js");
+    resetQuota();
+    stub(() => ({
+      results: [
+        { entity_id: "t1", name: "Taylor Swift", types: ["urn:entity:artist"], popularity: 0.99 },
+        { entity_id: "t2", name: "Taylor Swift, Bon Iver", types: ["urn:entity:artist"], popularity: 0.63 },
+      ],
+    }));
+    const r = await opResolve("Taylor Swift", "artist");
+    expect(r.typeMatched).toBe(true);
+    expect(r.resolved[0]?.ambiguous).toBe(false);
+    resetQuota();
+    stub(() => ({
+      results: [
+        { entity_id: "a1", name: "Acme", types: ["urn:entity:brand"], popularity: 0.5 },
+        { entity_id: "a2", name: "Acme", types: ["urn:entity:brand"], popularity: 0.48 },
+      ],
+    }));
+    const r2 = await opResolve("Acme", "brand");
+    expect(r2.resolved[0]?.ambiguous).toBe(true);
+  });
+
+  it("parses signal-scoped affinity at entity.query.affinity", async () => {
+    const { resetQuota } = await import("../src/qloo/client.js");
+    const { opRank } = await import("../src/qloo/operations.js");
+    resetQuota();
+    stub(() => ({
+      success: true,
+      results: { entities: [{ entity_id: "a", name: "A", query: { affinity: 0.9 } }, { entity_id: "b", name: "B", query: { affinity: 0.4 } }] },
+    }));
+    const r = await opRank("brand", ["a", "b"], ["sig1"]);
+    expect(r.candidates.map((c) => c.affinity)).toEqual([0.9, 0.4]);
   });
 });

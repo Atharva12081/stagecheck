@@ -152,7 +152,18 @@ function sampleFixture(path: string, params: Record<string, string>): unknown {
     };
   }
   if (path === "/v2/insights") {
-    if (params["signal.interests.entities"] && !params["filter.results.entities"]) {
+    if ((params["filter.type"] ?? "") === "urn:heatmap") {
+      const m = params["filter.location.query"] ?? "nowhere";
+      const aff = hash01(`geo:${m.toLowerCase()}`);
+      return {
+        success: true,
+        sample: true,
+        results: {
+          heatmap: [{ location: { latitude: 0, longitude: 0, geohash: "sample" }, query: { affinity: aff, sample: true } }],
+        },
+      };
+    }
+    if (params["signal.interests.entities"] && !params["filter.entities"]) {
       return {
         success: true,
         sample: true,
@@ -160,14 +171,14 @@ function sampleFixture(path: string, params: Record<string, string>): unknown {
           entities: [1, 2, 3].map((n) => ({
             entity_id: `sample:alt-${n}`,
             name: `Sample Alternative ${n}`,
-            affinity: hash01(`sample:alt-${n}`),
             popularity: 0.5,
+            query: { affinity: hash01(`sample:alt-${n}`), sample: true },
             sample: true,
           })),
         },
       };
     }
-    const ids = (params["filter.results.entities"] ?? "sample:unknown").split(",");
+    const ids = (params["filter.entities"] ?? "sample:unknown").split(",");
     return {
       success: true,
       sample: true,
@@ -175,8 +186,8 @@ function sampleFixture(path: string, params: Record<string, string>): unknown {
         entities: ids.map((id) => ({
           entity_id: id,
           name: sampleName(id),
-          affinity: hash01(id),
           popularity: 0.5,
+          query: { affinity: hash01(id), sample: true },
           sample: true,
         })),
       },

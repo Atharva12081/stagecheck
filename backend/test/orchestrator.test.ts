@@ -23,15 +23,21 @@ describe("orchestrator loop (stubbed Qloo)", () => {
     stubFetch((url: string) => {
       if (url.includes("/search")) {
         const q = new URL(url).searchParams.get("query") ?? "X";
-        return { results: [{ id: `id-${q}`, name: q }] };
+        const types = new URL(url).searchParams.get("types") ?? "urn:entity:artist";
+        return { results: [{ entity_id: `id-${q}`, name: q, types: [types] }] };
       }
       if (url.includes("/v2/insights")) {
         const u = new URL(url);
-        const ids = (u.searchParams.get("filter.results.entities") ?? "").split(",");
-        // First candidate (chosen) weak, alternative strong -> FAIL then repair PASS.
-        const entities = ids.map((id, i) => ({ entity_id: id, name: id.replace("id-", ""), affinity: i === 0 ? 0.3 : 0.85 }));
-        if (u.searchParams.get("signal.interests.entities")) {
-          return { success: true, results: { entities: [{ entity_id: "id-Alt", name: "Alt", affinity: 0.85 }] } };
+        const ids = (u.searchParams.get("filter.results.entities") ?? "").split(",").filter(Boolean);
+        // First candidate (chosen) weak, alternatives strong -> FAIL then repair PASS.
+        const entities = ids.map((id, i) => ({
+          entity_id: id,
+          name: id.replace("id-", ""),
+          popularity: 0.5,
+          query: { affinity: i === 0 ? 0.3 : 0.85 },
+        }));
+        if (u.searchParams.get("signal.interests.entities") && ids.length === 0) {
+          return { success: true, results: { entities: [{ entity_id: "id-Alt", name: "Alt", popularity: 0.6, query: { affinity: 0.85 } }] } };
         }
         return { success: true, results: { entities } };
       }
@@ -40,7 +46,10 @@ describe("orchestrator loop (stubbed Qloo)", () => {
     const report = await verifyPlan({
       title: "Tour",
       markets: ["Austin"],
-      items: [{ kind: "artist", name: "Weak Act", context: "choose between openers", alternatives: ["Strong Act"] }],
+      items: [
+        { kind: "artist", name: "Weak Act", context: "choose between openers", alternatives: ["Strong Act"] },
+        { kind: "artist", name: "Headliner", context: "headliner for the tour" },
+      ],
     });
     expect(report.mode).toBe("live");
     const d = report.decisions[0]!;

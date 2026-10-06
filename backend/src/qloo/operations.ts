@@ -25,6 +25,7 @@ export interface RankedCandidate {
   name: string;
   affinity: number;
   popularity?: number;
+  explain?: unknown;
 }
 
 export interface RankOutcome {
@@ -49,18 +50,31 @@ function str(v: unknown, fb = ""): string {
 }
 
 /** resolve: entity resolution with ambiguity detection. */
-export async function opResolve(query: string, kind: DecisionKind): Promise<{ result: QlooResult<unknown>; resolved: ResolvedEntity[] }> {
+export async function opResolve(query: string, kind: DecisionKind): Promise<{ result: QlooResult<unknown>; resolved: ResolvedEntity[]; typeMatched: boolean }> {
   const result = await qloo.search(query, SEARCH_TYPE[kind]);
   const hits = result.state === "ok" || result.state === "degraded" || result.state === "partial" ? asEntities(result.data) : [];
-  const list = hits.slice(0, 5).map((h) => String(h["id"] ?? h["entity_id"] ?? ""));
-  const resolved: ResolvedEntity[] = hits.slice(0, 3).map((h, i) => ({
+  const expected = FILTER_TYPE[kind];
+  const matched = hits.filter((h) => {
+    const t = h["types"];
+    return Array.isArray(t) ? (t as unknown[]).includes(expected) : str(h["type"]) === expected;
+  });
+  const pool = matched.length > 0 ? matched : [];
+  // Live-calibrated ambiguity: an exact top hit with no same-named rival is
+  // NOT ambiguous (collaborations/sub-brands below it don't confuse identity).
+  // A non-exact top hit, or a same-named rival, means uncertain identity.
+  const norm = (s: string): string => s.toLowerCase().trim();
+  const exactName = norm(query);
+  const firstExact = pool.length > 0 && norm(str(pool[0]!["name"])) === exactName;
+  const dupe = pool.slice(1).some((h) => norm(str(h["name"])) === exactName);
+  const ambiguous = pool.length > 1 && (!firstExact || dupe);
+  const resolved: ResolvedEntity[] = pool.slice(0, 3).map((h, i) => ({
     query,
-    id: str(h["id"] ?? h["entity_id"]),
+    id: str(h["entity_id"] ?? h["id"]),
     name: str(h["name"], query),
-    type: FILTER_TYPE[kind],
-    ambiguous: list.length > 1 && i === 0,
+    type: expected,
+    ambiguous: ambiguous && i === 0,
   }));
-  return { result, resolved };
+  return { result, resolved, typeMatched: matched.length > 0 };
 }
 
 /** describe: entity metadata + tags for characterization. */
@@ -79,45 +93,71 @@ export async function opRecommend(kind: DecisionKind, signalEntityId: string, ta
 }
 
 /**
- * rank: evaluate chosen + alternatives TOGETHER in one insights call.
- * Comparability rule: affinities from this single response share a scale;
- * never compare numbers across separate calls.
+ * rank: evaluate chosen + alternatives TOGETHER in one insights call against a
+ * SHARED signal (the rest of the plan). Live-verified: affinity only exists
+ * signal-scoped at entity.query.affinity; filter.entities is deprecated in
+ * favor of filter.results.entities, which returns affinity when a signal is
+ * present. Comparability rule: affinities from this single response share the
+ * signal scale; never compare across calls.
  */
-export async function opRank(kind: DecisionKind, ids: string[], signal: Record<string, string>): Promise<RankOutcome> {
+export async function opRank(kind: DecisionKind, ids: string[], signalEntityIds: string[], extra?: Record<string, string>): Promise<RankOutcome> {
+  if (signalEntityIds.length === 0) {
+    return { result: { state: "needs_input", data: null, note: "ranking requires a shared plan-context signal" }, candidates: [] };
+  }
   const result = await qloo.insights({
     "filter.type": FILTER_TYPE[kind],
+    "signal.interests.entities": signalEntityIds.join(","),
     "filter.results.entities": ids.join(","),
     "feature.explainability": "true",
     take: String(Math.max(ids.length, 5)),
-    ...signal,
+    ...extra,
   });
   return { result, candidates: rankList(result) };
 }
 
 function rankList(result: QlooResult<unknown>): RankedCandidate[] {
   if (!result.data) return [];
-  return asEntities(result.data).map((e) => ({
-    id: str(e["entity_id"] ?? e["id"]),
-    name: str(e["name"], "unknown"),
-    affinity: num(e["affinity"]),
-    popularity: typeof e["popularity"] === "number" ? (e["popularity"] as number) : undefined,
-  }));
+  return asEntities(result.data).map((e) => {
+    const q = e["query"] as Record<string, unknown> | undefined;
+    const aff = q && typeof q["affinity"] === "number" ? (q["affinity"] as number) : num(e["affinity"]);
+    return {
+      id: str(e["entity_id"] ?? e["id"]),
+      name: str(e["name"], "unknown"),
+      affinity: aff,
+      popularity: typeof e["popularity"] === "number" ? (e["popularity"] as number) : undefined,
+      explain: q?.["explainability"],
+    };
+  });
 }
 
-/** where_popular: geographic affinity for an entity across markets (one call per market shares signal; markets compared by rank order, not raw score). */
+/**
+ * where_popular: heatmap affinity for one entity per market (live-verified:
+ * filter.type=urn:heatmap + signal + filter.location.query; market score is
+ * the cell query affinity). Markets are compared by RANK ORDER only, never by
+ * treating cross-call scores as a single scale.
+ */
 export async function opWherePopular(kind: DecisionKind, entityId: string, markets: string[]): Promise<{ result: QlooResult<unknown>; byMarket: { market: string; affinity: number }[] }> {
   const byMarket: { market: string; affinity: number }[] = [];
   let last: QlooResult<unknown> = { state: "empty", data: null, note: "no markets" };
+  const kindKey = `entity_${FILTER_TYPE[kind].split(":").pop()}_affinity`;
   for (const market of markets) {
     const r = await qloo.insights({
-      "filter.type": FILTER_TYPE[kind],
-      "filter.results.entities": entityId,
+      "filter.type": "urn:heatmap",
+      "signal.interests.entities": entityId,
       "filter.location.query": market,
       "filter.location.radius": "0",
     });
     last = r;
-    const list = rankList(r);
-    byMarket.push({ market, affinity: list[0]?.affinity ?? 0 });
+    let affinity = 0;
+    if (r.data && typeof r.data === "object") {
+      const res = (r.data as Record<string, unknown>)["results"] as Record<string, unknown> | undefined;
+      const cells = res?.["heatmap"];
+      const first = Array.isArray(cells) ? (cells[0] as Record<string, unknown> | undefined) : undefined;
+      const q = first?.["query"] as Record<string, unknown> | undefined;
+      const v = q?.[kindKey] ?? q?.["affinity"];
+      if (typeof v === "number") affinity = v;
+    }
+    byMarket.push({ market, affinity });
   }
   return { result: last, byMarket };
 }

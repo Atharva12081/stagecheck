@@ -13,15 +13,23 @@ function stubFetch(): void {
     const url = String(u);
     const json = (): unknown => {
       if (url.includes("/search")) {
-        const q = new URL(url).searchParams.get("query") ?? "X";
+        const peer = new URL(url);
+        const q = peer.searchParams.get("query") ?? "X";
+        const types = peer.searchParams.get("types") ?? "urn:entity:artist";
         if (/xyxxy|nonexistent|12345/i.test(q)) return { results: [] };
         const n = /acme/i.test(q) ? 2 : 1;
-        return { results: Array.from({ length: n }, (_, i) => ({ id: `id-${q}-${i}`, name: i === 0 ? q : `${q} (alt)` })) };
+        return { results: Array.from({ length: n }, (_, i) => ({ entity_id: `id-${q}-${i}`, name: i === 0 ? q : `${q} (alt)`, types: [types] })) };
       }
       if (url.includes("/v2/insights")) {
         const p = new URL(url).searchParams;
-        if (p.get("signal.interests.entities")) {
-          return { success: true, results: { entities: [{ entity_id: "id-rep", name: "Verified Alt", affinity: 0.88, popularity: 0.6 }] } };
+        if (p.get("filter.type") === "urn:heatmap") {
+          const m = (p.get("filter.location.query") ?? "x").toLowerCase();
+          let h = 0;
+          for (const ch of m) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+          return { success: true, results: { heatmap: [{ location: { geohash: "eval" }, query: { affinity: 0.5 + (h % 40) / 100 } }] } };
+        }
+        if (p.get("signal.interests.entities") && !p.get("filter.results.entities")) {
+          return { success: true, results: { entities: [{ entity_id: "id-rep", name: "Verified Alt", popularity: 0.6, query: { affinity: 0.88 } }] } };
         }
         const ids = (p.get("filter.results.entities") ?? "id-solo").split(",");
         return {
@@ -30,8 +38,8 @@ function stubFetch(): void {
             entities: ids.map((id, i) => ({
               entity_id: id,
               name: id.replace(/^id-/, "").replace(/-\d$/, ""),
-              affinity: i === 0 ? 0.35 : 0.85,
               popularity: 0.5,
+              query: { affinity: i === 0 ? 0.35 : 0.85 },
             })),
           },
         };
@@ -89,10 +97,14 @@ for (const f of readdirSync(join(here, "scenarios")).filter((x) => x.endsWith(".
     else console.log(`  MISS ${s.name}[${i}]: expected ABSTAIN, got ${report.decisions[i]?.verdict}`);
   }
   for (const d of report.decisions) {
-    if (d.verdict === "FAIL") {
+    if (d.verdict === "FAIL" && d.op === "rank") {
       repairsTotal++;
       if (d.replacement && d.reverify) repairsOk++;
-      else console.log(`  MISS ${s.name}/${d.id}: FAIL without reverified replacement`);
+      else console.log(`  MISS ${s.name}/${d.id}: rank FAIL without reverified replacement`);
+    }
+    if (d.verdict === "FAIL" && d.op !== "rank" && d.replacement) {
+      claimViolations++;
+      console.log(`  MISS ${s.name}/${d.id}: non-rank FAIL must stay unresolved, not repaired`);
     }
     if ((d.verdict === "PASS" || d.verdict === "FAIL") && d.evidenceQuality === "insufficient") {
       claimViolations++;

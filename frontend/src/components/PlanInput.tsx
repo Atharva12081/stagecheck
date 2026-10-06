@@ -29,6 +29,7 @@ export function PlanInput({ initial, onVerify }: { initial: Plan; onVerify: (p: 
       <div className="text-center space-y-2 mb-10">
         <h2 className="text-2xl font-bold tracking-tight">Submit a plan for cultural preflight</h2>
         <p className="text-sm text-gray-500">StageCheck will decompose each decision, test it against Qloo, and return pass/fail verdicts with evidence.</p>
+        <p className="text-[11px] text-gray-600">Demo scenarios are hypothetical planning exercises; no affiliation, endorsement, or actual sponsorship is implied.</p>
       </div>
 
       <label className="block">

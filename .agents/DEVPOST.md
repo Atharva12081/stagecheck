@@ -29,11 +29,16 @@ How it works:
 5. **Diff** — the final output is a before/after decision diff, with every
    name and number traceable to an append-only Evidence Ledger.
 
-Real flagship, reproduced 3x live: a Taylor Swift stadium tour with
+Real flagship, reproduced identically across 5 live runs (hypothetical
+planning scenario; no affiliation, endorsement, or actual sponsorship
+implied): a Taylor Swift stadium tour with
 Liquid Death as pitched sponsor. Qloo joint ranking (Nike 0.88 >
-Coca-Cola 0.84 > Liquid Death 0.64, one shared signal scale) FAILs the
+Coca-Cola 0.84 > Liquid Death 0.64, one shared signal scale, gap ≈0.25) FAILs the
 pick by a 0.25 gap; the system replaces it with Nike and a fresh
-re-ranking reverifies PASS. Nothing unresolved.
+re-ranking reverifies PASS. The sponsor intervention is fully repaired and
+reverified; the independent market check remains REVIEW (the tested markets
+are effectively tied, so the system preserves that uncertainty rather than
+forcing a verdict). No decision is left silently unhandled.
 
 For agents too: TasteDiff is exposed as an MCP-compatible tool
 (`tastediff_verify`), so any agent can preflight its own plan.

@@ -40,13 +40,13 @@ export function decide(v: VerdictInput): { verdict: Verdict; reason: string; gap
   const gap = Math.round((top - chosen) * 1e4) / 1e4;
   const quality = v.ranked.length >= MIN_EVIDENCE && !v.ambiguous ? "strong" : v.ranked.length >= MIN_EVIDENCE ? "thin" : "insufficient";
   if (v.ambiguous) {
-    return { verdict: "REVIEW", reason: `Entity resolution ambiguous; top affinity ${top.toFixed(2)} but identity uncertain.`, gap, quality: "thin" };
+    return { verdict: "REVIEW", reason: `Entity resolution ambiguous; top affinity ≈${top.toFixed(2)} but identity uncertain.`, gap, quality: "thin" };
   }
   if (v.state === "partial" || v.state === "degraded") {
-    if (gap >= FAIL_GAP) return { verdict: "FAIL", reason: `Degraded evidence but chosen trails best by ${gap.toFixed(2)} (≥ ${FAIL_GAP}).`, gap, quality: "thin" };
+    if (gap >= FAIL_GAP) return { verdict: "FAIL", reason: `Degraded evidence but chosen trails best by ≈${gap.toFixed(2)} (≥ ${FAIL_GAP}).`, gap, quality: "thin" };
     return { verdict: "REVIEW", reason: `Qloo result ${v.state}; evidence usable but flagged.`, gap, quality: "thin" };
   }
-  if (gap <= PASS_GAP) return { verdict: "PASS", reason: `Chosen within ${gap.toFixed(2)} of best (≤ ${PASS_GAP}) on a shared scale.`, gap, quality };
-  if (gap >= FAIL_GAP) return { verdict: "FAIL", reason: `Chosen trails best by ${gap.toFixed(2)} (≥ ${FAIL_GAP}). Contradiction found.`, gap, quality };
-  return { verdict: "REVIEW", reason: `Gap ${gap.toFixed(2)} is inconclusive; human judgment needed.`, gap, quality };
+  if (gap <= PASS_GAP) return { verdict: "PASS", reason: `Chosen within ≈${gap.toFixed(2)} of best (≤ ${PASS_GAP}) on a shared scale.`, gap, quality };
+  if (gap >= FAIL_GAP) return { verdict: "FAIL", reason: `Chosen trails best by ≈${gap.toFixed(2)} (≥ ${FAIL_GAP}). Contradiction found.`, gap, quality };
+  return { verdict: "REVIEW", reason: `Gap ≈${gap.toFixed(2)} is inconclusive; human judgment needed.`, gap, quality };
 }

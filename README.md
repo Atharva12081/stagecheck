@@ -18,7 +18,7 @@ detection, targeted repair, reverification.
 cd backend && npm install
 export QLOO_API_KEY=...   # server-side only; hackathon base URL is baked in
 npm run dev               # http://localhost:8080 (API + frontend)
-npm test                  # 29 unit/contract/evidence/adversarial tests
+npm test                  # 38 unit/contract/evidence/adversarial tests
 npm run eval              # 4 fixed scenarios, tool-selection + claim metrics
 npm run smoke             # bounded live Qloo check (3 read-only calls)
 ```
@@ -33,3 +33,6 @@ never confused with live Qloo results.
 - `GET /api/health` — `{ ok, qloo: live|sample|unconfigured }`
 
 License: MIT.
+
+Demo scenarios are hypothetical planning exercises; no artist/brand
+affiliation, endorsement, or actual sponsorship is implied.

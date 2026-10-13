@@ -22,13 +22,13 @@ jobs:
             backend/package-lock.json
             frontend/package-lock.json
       - name: Install backend
-        run: npm ci
+        run: npm ci --workspaces=false
         working-directory: backend
       - name: Test and build backend
         run: npm test && npm run build && npm run eval
         working-directory: backend
       - name: Install frontend
-        run: npm ci
+        run: npm ci --workspaces=false
         working-directory: frontend
       - name: Lint and build frontend
         run: npm run lint && npm run build

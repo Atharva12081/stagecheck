@@ -1,6 +1,5 @@
 import type { DecisionContract, EvidenceEntry, QlooOp } from "./types.js";
-
-let seq = 0;
+import { nextEvidenceId, resetFallbackContext } from "../request-context.js";
 
 export function entry(
   kind: EvidenceEntry["kind"],
@@ -10,11 +9,11 @@ export function entry(
   payload: unknown,
   affinity?: number,
 ): EvidenceEntry {
-  return { id: `e${++seq}`, kind, op, ref, summary, payload, ...(affinity !== undefined ? { affinity } : {}) };
+  return { id: nextEvidenceId(), kind, op, ref, summary, payload, ...(affinity !== undefined ? { affinity } : {}) };
 }
 
 export function resetLedgerSeq(): void {
-  seq = 0;
+  resetFallbackContext();
 }
 
 /** Names + numbers the report is allowed to state: exactly the ledger-joined set. */

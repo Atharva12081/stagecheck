@@ -1,4 +1,5 @@
-import { QLOO_BASE, QLOO_KEY, QLOO_CACHE_MAX, QLOO_CACHE_TTL_MS, QLOO_MAX_RETRIES, QLOO_TIMEOUT_MS, SAMPLE_MODE } from "../config.js";
+import { MAX_CALLS_PER_VERIFY, QLOO_BASE, QLOO_KEY, QLOO_CACHE_MAX, QLOO_CACHE_TTL_MS, QLOO_MAX_RETRIES, QLOO_TIMEOUT_MS, SAMPLE_MODE } from "../config.js";
+import { claimQlooCall, getQlooCallCount, resetFallbackContext } from "../request-context.js";
 import type { ResultState } from "../tastediff/types.js";
 
 export interface QlooResult<T> {
@@ -14,14 +15,13 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
-let callCount = 0;
 
 export function resetQuota(): void {
-  callCount = 0;
+  resetFallbackContext();
   cache.clear();
 }
 export function getCallCount(): number {
-  return callCount;
+  return getQlooCallCount();
 }
 
 function cacheGet(key: string): unknown | undefined {
@@ -42,15 +42,15 @@ function cacheSet(key: string, value: unknown): void {
   cache.set(key, { exp: Date.now() + QLOO_CACHE_TTL_MS, value });
 }
 
-async function get(path: string, params: Record<string, string>): Promise<QlooResult<unknown>> {
+async function get(path: string, params: Record<string, string>, bypassCache = false): Promise<QlooResult<unknown>> {
   const qs = new URLSearchParams(params).toString();
   const url = `${QLOO_BASE}${path}?${qs}`;
-  const cached = cacheGet(url);
+  const cached = bypassCache ? undefined : cacheGet(url);
   if (cached !== undefined) return { state: "ok", data: cached, note: "cache" };
 
   if (!QLOO_KEY) {
     if (SAMPLE_MODE) {
-      callCount++; // sample calls count against quota too, preserving budget realism
+      if (!claimQlooCall(MAX_CALLS_PER_VERIFY)) return { state: "error", data: null, note: "Qloo call budget exhausted" };
       return { state: "degraded", data: sampleFixture(path, params), note: "SAMPLE_MODE labeled fixture", degraded: true };
     }
     return { state: "error", data: null, note: "QLOO_API_KEY not configured" };
@@ -58,8 +58,10 @@ async function get(path: string, params: Record<string, string>): Promise<QlooRe
 
   let lastErr = "";
   for (let attempt = 0; attempt <= QLOO_MAX_RETRIES; attempt++) {
+    if (!claimQlooCall(MAX_CALLS_PER_VERIFY)) {
+      return { state: "error", data: null, note: "Qloo call budget exhausted" };
+    }
     try {
-      callCount++;
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), QLOO_TIMEOUT_MS);
       const res = await fetch(url, { headers: { "X-Api-Key": QLOO_KEY }, signal: ctrl.signal });
@@ -81,7 +83,7 @@ async function get(path: string, params: Record<string, string>): Promise<QlooRe
       if (Array.isArray(entities) && entities.length === 0) {
         return { state: "empty", data: json, note: "200 with empty entities" };
       }
-      cacheSet(url, json);
+      if (!bypassCache) cacheSet(url, json);
       const degraded = Array.isArray(json["warnings"]) && (json["warnings"] as unknown[]).length > 0;
       const partial = json["success"] === false;
       return { state: partial ? "partial" : degraded ? "degraded" : "ok", data: json, note: degraded ? "warnings present" : "ok", degraded };
@@ -98,6 +100,7 @@ export const qloo = {
     get("/search", typeUrn ? { query, types: typeUrn } : { query }),
   entity: (id: string) => get("/entities", { entity_ids: id }),
   insights: (params: Record<string, string>) => get("/v2/insights", params),
+  insightsFresh: (params: Record<string, string>) => get("/v2/insights", params, true),
   compare: (params: Record<string, string>) => get("/v2/analysis/compare", params),
   trending: (params: Record<string, string>) => get("/v2/trending", params),
   tags: (query: string) => get("/v2/tags", { "filter.query": query }),
@@ -163,7 +166,7 @@ function sampleFixture(path: string, params: Record<string, string>): unknown {
         },
       };
     }
-    if (params["signal.interests.entities"] && !params["filter.entities"]) {
+    if (params["signal.interests.entities"] && !params["filter.results.entities"]) {
       return {
         success: true,
         sample: true,
@@ -178,7 +181,7 @@ function sampleFixture(path: string, params: Record<string, string>): unknown {
         },
       };
     }
-    const ids = (params["filter.entities"] ?? "sample:unknown").split(",");
+    const ids = (params["filter.results.entities"] ?? "sample:unknown").split(",");
     return {
       success: true,
       sample: true,

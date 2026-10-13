@@ -14,3 +14,9 @@ body {
   color: var(--color-preflight-text);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
+
+/* The dark shell needs brighter muted text to remain WCAG AA legible. */
+.text-gray-500,
+.text-gray-600 {
+  color: #9ca3af;
+}

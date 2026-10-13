@@ -1,9 +1,27 @@
 # STATE — StageCheck / TasteDiff (Agent A backend)
 
-Date: 2026-10-04. Repo was empty; Agent A built the backend foundation end-to-end.
+Date: 2026-10-13. Repository and remote `main` re-audited before changes.
 
-Stack: backend TypeScript (Fastify + Zod, Node 26), `frontend/` working demo shell (Agent B owns UX), `evals/` fixed scenarios, Dockerfile single-host deploy.
-Qloo: hackathon base URL baked in, key via `QLOO_API_KEY` server-side only. No key yet → labeled `SAMPLE_MODE`; live smoke script ready.
+Stack: backend TypeScript (Fastify + Zod, Node 22), React frontend,
+fixed regression evals, live-only comparative benchmark, and single-host Docker deploy.
+Qloo: hackathon base URL baked in; key is server-side only. No key is available
+in the current environment, so fresh live verification is blocked.
+
+Verified 2026-10-13:
+- Fixed all six mission audit risks: minimum candidate evidence, PASS-only repair
+  adoption, winner-first fresh reverification, request-local quota/evidence IDs,
+  Docker dependency layout, and real GitHub Actions CI configuration.
+- 42/42 Vitest tests pass; backend build and fixed eval pass (6/6 tool
+  selection, 1/1 abstention, 2/2 repairs, 0 claim violations); frontend lint
+  and build pass.
+- Mobile-width workflow verified locally; invalid plans return 400; rate limit
+  returned 429 after the configured burst; WCAG A/AA automated scan has zero
+  violations.
+- `https://stagecheck.onrender.com/api/health` is not deployed (Render routing
+  404). Render dashboard requires owner login. Docker engine is unavailable
+  locally, so the workflow's Docker build must be confirmed in GitHub Actions.
+- Live-only comparative runner preregisters non-flagship scenarios and refuses
+  to run without a key. No comparative improvement claim is currently made.
 
 Verified working (2026-10-04):
 - `tsc --noEmit` clean; Vitest 29/29 pass (tool-selection, verdicts, ledger, security, stubbed orchestrator incl. FAIL→repair→reverify, unknown/injection ABSTAIN, error handling).

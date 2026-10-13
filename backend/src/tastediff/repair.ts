@@ -26,8 +26,8 @@ function topAffId(payload: unknown): string | null {
 /**
  * Repair: only failed decisions with repairAllowed. Candidates come from Qloo
  * discovery anchored on a verified entity — never invented. Each replacement
- * is re-ranked jointly against the same context; only a PASS/REVIEW reverify
- * may enter the revised plan, else the decision stays unresolved.
+ * is re-ranked jointly against the same context; only a PASS reverify may
+ * enter the revised plan, else the decision stays unresolved.
  */
 export async function repairAndReverify(d: DecisionContract, siblings: Map<string, string> = new Map()): Promise<void> {
   // Only rank failures are repairable: candidate substitution is the one
@@ -37,13 +37,6 @@ export async function repairAndReverify(d: DecisionContract, siblings: Map<strin
   const anchor = d.entities[0];
   if (!anchor) {
     d.replacementEvidence.push(entry("calculation", "repair", d.id, "No verified anchor entity; cannot discover alternatives.", null));
-    return;
-  }
-  const discovered = await opRecommend(d.kind, anchor.id, 8);
-  d.replacementEvidence.push(entry("qloo_output", "recommend", d.id, `Discovery call state=${discovered.result.state}.`, discovered.result.data));
-  const pool = discovered.candidates.filter((c) => c.id !== anchor.id).slice(0, 4);
-  if (pool.length === 0 || discovered.result.state === "empty" || discovered.result.state === "error") {
-    d.replacementEvidence.push(entry("calculation", "repair", d.id, "Discovery yielded no usable alternatives; left unresolved.", null));
     return;
   }
   // Same shared signal as the original ranking, so the reverify scale matches.
@@ -60,7 +53,7 @@ export async function repairAndReverify(d: DecisionContract, siblings: Map<strin
   const rankEv = d.evidence.find((e) => e.op === "rank" && e.kind === "qloo_output");
   const winner = topAffId(rankEv?.payload);
   if (winner && winner !== anchor.id) {
-    const re = await opRank(d.kind, [anchor.id, winner], signalIds, extra);
+    const re = await opRank(d.kind, [anchor.id, winner], signalIds, extra, true);
     d.replacementEvidence.push(entry("qloo_output", "rank", d.id, `Reproducibility re-rank state=${re.result.state}.`, re.result.data));
     const wname = re.candidates.find((c) => c.id === winner)?.name ?? "candidate";
     const out = decide({
@@ -70,7 +63,7 @@ export async function repairAndReverify(d: DecisionContract, siblings: Map<strin
       ambiguous: false,
       methodValid: true,
     });
-    if ((out.verdict === "PASS" || out.verdict === "REVIEW") && out.gap <= 0.05) {
+    if (out.verdict === "PASS") {
       d.replacement = wname;
       d.reverify = out.verdict;
       d.replacementEvidence.push(entry("calculation", "repair", d.id, `Winner ${wname} reproduced on fresh evidence: ${out.verdict} (gap ${out.gap.toFixed(2)}).`, { rank_gap: out.gap }));
@@ -78,11 +71,18 @@ export async function repairAndReverify(d: DecisionContract, siblings: Map<strin
     }
     d.replacementEvidence.push(entry("calculation", "repair", d.id, `Winner did not reproduce cleanly (${out.verdict}); trying discovery.`, null));
   }
+  const discovered = await opRecommend(d.kind, anchor.id, 8);
+  d.replacementEvidence.push(entry("qloo_output", "recommend", d.id, `Discovery call state=${discovered.result.state}.`, discovered.result.data));
+  const pool = discovered.candidates.filter((c) => c.id !== anchor.id).slice(0, 4);
+  if (pool.length === 0 || discovered.result.state === "empty" || discovered.result.state === "error") {
+    d.replacementEvidence.push(entry("calculation", "repair", d.id, "Discovery yielded no usable alternatives; left unresolved.", null));
+    return;
+  }
   for (const alt of pool) {
     const resolved = await opResolve(alt.name, d.kind);
     const altId = resolved.resolved[0]?.id ?? alt.id;
     const ids = [anchor.id, altId];
-    const ranked = await opRank(d.kind, ids, signalIds, extra);
+    const ranked = await opRank(d.kind, ids, signalIds, extra, true);
     d.replacementEvidence.push(entry("qloo_output", "rank", d.id, `Reverification of ${alt.name}: state=${ranked.result.state}.`, ranked.result.data));
     const out = decide({
       state: ranked.result.state,
@@ -91,7 +91,7 @@ export async function repairAndReverify(d: DecisionContract, siblings: Map<strin
       ambiguous: resolved.resolved[0]?.ambiguous ?? false,
       methodValid: true,
     });
-    if (out.verdict === "PASS" || out.verdict === "REVIEW") {
+    if (out.verdict === "PASS") {
       d.replacement = alt.name;
       d.reverify = out.verdict;
       d.replacementEvidence.push(entry("calculation", "repair", d.id, `Replacement ${alt.name} reverified: ${out.verdict} (rank_gap=${out.gap.toFixed(2)}).`, { rank_gap: out.gap }));

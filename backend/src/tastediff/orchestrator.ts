@@ -6,6 +6,7 @@ import { decide } from "./verdict.js";
 import { allowedClaims, checkInterpretation, entry } from "./ledger.js";
 import { repairAndReverify } from "./repair.js";
 import type { DecisionContract, EvidenceEntry, VerifiedReport } from "./types.js";
+import { withRequestContext } from "../request-context.js";
 
 export interface PlanInput {
   title?: string;
@@ -192,7 +193,7 @@ async function evaluate(d: DecisionContract, markets: string[], siblings: Map<st
   }
 }
 
-export async function verifyPlan(plan: PlanInput): Promise<VerifiedReport> {
+async function verifyPlanInContext(plan: PlanInput): Promise<VerifiedReport> {
   const t0 = Date.now();
   const markets = (plan.markets ?? []).slice(0, 6);
   const decisions = decompose(plan.items, markets);
@@ -219,10 +220,10 @@ export async function verifyPlan(plan: PlanInput): Promise<VerifiedReport> {
   }
   const revisedPlan = decisions.map((d) => ({
     kind: d.kind,
-    choice: d.replacement && d.reverify ? d.replacement : d.original,
-    verdict: (d.replacement && d.reverify ? d.reverify : d.verdict) as DecisionContract["verdict"],
+    choice: d.replacement && d.reverify === "PASS" ? d.replacement : d.original,
+    verdict: (d.replacement && d.reverify === "PASS" ? d.reverify : d.verdict) as DecisionContract["verdict"],
   }));
-  const unresolved = decisions.filter((d) => d.verdict === "FAIL" && !d.replacement).map((d) => d.original);
+  const unresolved = decisions.filter((d) => d.verdict === "FAIL" && d.reverify !== "PASS").map((d) => d.original);
   const mode = SAMPLE_MODE ? "sample" : QLOO_KEY ? "live" : "unconfigured";
   const allowed = allowedClaims(decisions);
   const violations = checkInterpretation(plan.interpretation ?? "", allowed);
@@ -237,4 +238,8 @@ export async function verifyPlan(plan: PlanInput): Promise<VerifiedReport> {
     latencyMs: Date.now() - t0,
     interpretation,
   };
+}
+
+export function verifyPlan(plan: PlanInput): Promise<VerifiedReport> {
+  return withRequestContext(() => verifyPlanInContext(plan));
 }

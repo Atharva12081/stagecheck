@@ -9,7 +9,8 @@
     "start": "node dist/src/index.js",
     "test": "vitest run",
     "smoke": "tsx src/qloo/smoke.ts",
-    "eval": "tsx ../evals/run.ts"
+    "eval": "tsx ../evals/run.ts",
+    "benchmark": "tsx ../evals/benchmark.ts"
   },
   "dependencies": {
     "fastify": "^5.3.0",

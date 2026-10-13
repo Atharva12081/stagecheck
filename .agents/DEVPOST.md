@@ -1,4 +1,4 @@
-# Devpost copy — DRAFT, all claims verified live 2026-10-06 (update URLs before pasting)
+# Devpost copy — DRAFT (rerun live evidence and update URLs before submission)
 
 ## Title
 StageCheck — cultural preflight for live entertainment
@@ -29,9 +29,9 @@ How it works:
 5. **Diff** — the final output is a before/after decision diff, with every
    name and number traceable to an append-only Evidence Ledger.
 
-Real flagship, reproduced identically across 5 live runs (hypothetical
-planning scenario; no affiliation, endorsement, or actual sponsorship
-implied): a Taylor Swift stadium tour with
+Archived flagship evidence captured from runs visibly labeled LIVE on October
+6, 2026 (hypothetical planning scenario; no affiliation, endorsement, or
+actual sponsorship implied): a Taylor Swift stadium tour with
 Liquid Death as pitched sponsor. Qloo joint ranking (Nike 0.88 >
 Coca-Cola 0.84 > Liquid Death 0.64, one shared signal scale, gap ≈0.25) FAILs the
 pick by a 0.25 gap; the system replaces it with Nike and a fresh
@@ -40,15 +40,23 @@ reverified; the independent market check remains REVIEW (the tested markets
 are effectively tied, so the system preserves that uncertainty rather than
 forcing a verdict). No decision is left silently unhandled.
 
+Before submission, these values must be rerun on the final public deployment.
+If current Qloo evidence differs, this paragraph and the screenshots must be
+updated rather than preserving the old outcome.
+
 For agents too: TasteDiff is exposed as an MCP-compatible tool
 (`tastediff_verify`), so any agent can preflight its own plan.
 
 ## Built with
 Qloo Taste AI API (hackathon server), TypeScript, Fastify, React, Zod.
-Deterministic engine: 38 automated tests, fixed-scenario evals, zero
-unsupported-claim tolerance in CI.
+Deterministic engine: 42 automated tests; fixed regression evaluation at 6/6
+tool-selection checks, 1/1 expected abstention, 2/2 reverified repairs, and 0
+claim violations. A separate live-only comparative runner reports StageCheck
+against one-shot Qloo ranking with explicit denominators and uncertainty; add
+its actual output here only after running it with the final server-side key.
 
 ## Links (fill before submit)
 - Live demo: <RENDER URL HERE>
 - Repo: https://github.com/Atharva12081/stagecheck
 - Screenshots: docs/flagship-results.png, docs/flagship-diff.png
+- Reproduction: docs/JUDGE_WALKTHROUGH.md

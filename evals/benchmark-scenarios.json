@@ -1,0 +1,33 @@
+[
+  {
+    "id": "charli-sponsor",
+    "signal": "Charli XCX",
+    "proposed": "Spotify",
+    "alternatives": ["Adidas", "Nike"]
+  },
+  {
+    "id": "morgan-sponsor",
+    "signal": "Morgan Wallen",
+    "proposed": "Nike",
+    "alternatives": ["Wrangler", "Coors Light"]
+  },
+  {
+    "id": "bts-sponsor",
+    "signal": "BTS",
+    "proposed": "Coca-Cola",
+    "alternatives": ["Samsung", "Nike"]
+  },
+  {
+    "id": "rosalia-sponsor",
+    "signal": "Rosalía",
+    "proposed": "Spotify",
+    "alternatives": ["Desigual", "Nike"]
+  },
+  {
+    "id": "unknown-brand-control",
+    "signal": "Charli XCX",
+    "proposed": "Xyzzy Nonexistent Brand 12345",
+    "alternatives": ["Nike", "Adidas"],
+    "expectedAbstain": true
+  }
+]

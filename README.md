@@ -18,8 +18,9 @@ detection, targeted repair, reverification.
 cd backend && npm install
 export QLOO_API_KEY=...   # server-side only; hackathon base URL is baked in
 npm run dev               # http://localhost:8080 (API + frontend)
-npm test                  # 38 unit/contract/evidence/adversarial tests
+npm test                  # 42 unit/contract/evidence/concurrency/adversarial tests
 npm run eval              # 4 fixed scenarios, tool-selection + claim metrics
+npm run benchmark         # bounded live-only StageCheck vs one-shot comparison
 npm run smoke             # bounded live Qloo check (3 read-only calls)
 ```
 
@@ -36,3 +37,15 @@ License: MIT.
 
 Demo scenarios are hypothetical planning exercises; no artist/brand
 affiliation, endorsement, or actual sponsorship is implied.
+
+## Evaluation and deployment status
+
+- CI runs backend tests/build/evals, frontend lint/build, and a production
+  Docker build on every push and pull request.
+- `evals/benchmark.ts` preregisters non-flagship scenarios and reports actual
+  denominators, failures, calls, latency, uncertainty, and Qloo-relative
+  limitations. It exits instead of using sample data when no live key exists.
+- The October 6 flagship screenshots in `docs/` are archived live evidence,
+  not proof that a public deployment is currently reachable.
+- No public deployment URL is currently verified. See
+  `docs/JUDGE_WALKTHROUGH.md` for the final owner checklist.

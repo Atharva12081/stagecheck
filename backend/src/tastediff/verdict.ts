@@ -42,6 +42,9 @@ export function decide(v: VerdictInput): { verdict: Verdict; reason: string; gap
   if (v.ambiguous) {
     return { verdict: "REVIEW", reason: `Entity resolution ambiguous; top affinity ≈${top.toFixed(2)} but identity uncertain.`, gap, quality: "thin" };
   }
+  if (v.ranked.length < MIN_EVIDENCE) {
+    return { verdict: "REVIEW", reason: `Only ${v.ranked.length} ranked candidate returned; at least ${MIN_EVIDENCE} are required for PASS or FAIL.`, gap, quality: "insufficient" };
+  }
   if (v.state === "partial" || v.state === "degraded") {
     if (gap >= FAIL_GAP) return { verdict: "FAIL", reason: `Degraded evidence but chosen trails best by ≈${gap.toFixed(2)} (≥ ${FAIL_GAP}).`, gap, quality: "thin" };
     return { verdict: "REVIEW", reason: `Qloo result ${v.state}; evidence usable but flagged.`, gap, quality: "thin" };

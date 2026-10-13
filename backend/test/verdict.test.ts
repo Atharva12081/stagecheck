@@ -7,6 +7,11 @@ describe("verdicts", () => {
     expect(o.verdict).toBe("PASS");
     expect(o.gap).toBeCloseTo(0);
   });
+  it("does not PASS with fewer than two ranked candidates", () => {
+    const o = decide({ state: "ok", ranked: [{ name: "A", affinity: 0.8 }], chosenName: "A", ambiguous: false, methodValid: true });
+    expect(o.verdict).toBe("REVIEW");
+    expect(o.quality).toBe("insufficient");
+  });
   it("FAIL on genuine contradiction", () => {
     const o = decide({ state: "ok", ranked: [{ name: "A", affinity: 0.8 }, { name: "B", affinity: 0.4 }], chosenName: "B", ambiguous: false, methodValid: true });
     expect(o.verdict).toBe("FAIL");

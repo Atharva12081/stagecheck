@@ -100,18 +100,19 @@ export async function opRecommend(kind: DecisionKind, signalEntityId: string, ta
  * present. Comparability rule: affinities from this single response share the
  * signal scale; never compare across calls.
  */
-export async function opRank(kind: DecisionKind, ids: string[], signalEntityIds: string[], extra?: Record<string, string>): Promise<RankOutcome> {
+export async function opRank(kind: DecisionKind, ids: string[], signalEntityIds: string[], extra?: Record<string, string>, fresh = false): Promise<RankOutcome> {
   if (signalEntityIds.length === 0) {
     return { result: { state: "needs_input", data: null, note: "ranking requires a shared plan-context signal" }, candidates: [] };
   }
-  const result = await qloo.insights({
+  const params = {
     "filter.type": FILTER_TYPE[kind],
     "signal.interests.entities": signalEntityIds.join(","),
     "filter.results.entities": ids.join(","),
     "feature.explainability": "true",
     take: String(Math.max(ids.length, 5)),
     ...extra,
-  });
+  };
+  const result = fresh ? await qloo.insightsFresh(params) : await qloo.insights(params);
   return { result, candidates: rankList(result) };
 }
 

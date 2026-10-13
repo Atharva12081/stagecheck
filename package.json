@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "test": "npm --workspace stagecheck-backend test",
-    "eval": "npm --workspace stagecheck-backend run eval"
+    "eval": "npm --workspace stagecheck-backend run eval",
+    "benchmark": "npm --workspace stagecheck-backend run benchmark"
   }
 }

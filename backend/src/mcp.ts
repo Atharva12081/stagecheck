@@ -1,9 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { PlanSchema, rateLimit, sanitizePlan } from "./security/validate.js";
 import { RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS } from "./config.js";
-import { resetQuota } from "./qloo/client.js";
-import { resetLedgerSeq } from "./tastediff/ledger.js";
-import { resetSeq } from "./tastediff/planner.js";
 import { verifyPlan } from "./tastediff/orchestrator.js";
 
 /** Minimal MCP-compatible JSON-RPC surface: tastediff_verify as an agent-callable tool. */
@@ -39,9 +36,6 @@ export async function registerMcp(app: FastifyInstance): Promise<void> {
       if (!parsed.success) {
         return { jsonrpc: "2.0", id: body.id ?? 1, error: { code: -32602, message: "invalid plan arguments" } };
       }
-      resetQuota();
-      resetLedgerSeq();
-      resetSeq();
       const report = await verifyPlan(sanitizePlan(parsed.data));
       return { jsonrpc: "2.0", id: body.id ?? 1, result: { content: [{ type: "text", text: JSON.stringify(report) }] } };
     }

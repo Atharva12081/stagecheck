@@ -57,16 +57,14 @@ export function classify(item: PlanItem, hasMarket: boolean, hasAlternatives: bo
   return "unsupported";
 }
 
-let seq = 0;
-
 /** Decompose a plan into decision contracts. Deterministic; an LLM may propose wording upstream but contracts + op selection here are authoritative. */
 export function decompose(items: PlanItem[], markets: string[]): DecisionContract[] {
-  return items.map((item) => {
+  return items.map((item, index) => {
     const kind = item.kind ?? inferKind(item.name, item.context ?? "");
     const market = item.market ?? markets[0];
     const q = classify(item, markets.length > 0, (item.alternatives?.length ?? 0) > 0);
     const sel = selectOp(q);
-    const id = `d${++seq}`;
+    const id = `d${index + 1}`;
     return {
       id,
       kind,
@@ -90,5 +88,5 @@ export function decompose(items: PlanItem[], markets: string[]): DecisionContrac
 }
 
 export function resetSeq(): void {
-  seq = 0;
+  // Retained for compatibility with direct callers; IDs are request-local.
 }
